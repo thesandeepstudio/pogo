@@ -45,6 +45,12 @@ export interface ResultItem {
   url?: string;
 }
 
+/** A one-line system event shown in the bar: lock keys, screenshot, download, battery. */
+export interface SystemNotice {
+  kind: string;
+  title: string;
+}
+
 export interface SearchResult {
   title: string;
   items: ResultItem[];
@@ -138,6 +144,9 @@ class AppState {
 
   /** Latest media session from the OS, or null when nothing is playing. */
   media: NowPlaying | null = null;
+
+  /** Transient system event in the compact bar, or null. */
+  notice: SystemNotice | null = null;
 
   lastActivity = performance.now();
 

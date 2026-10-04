@@ -55,6 +55,7 @@ export class Island {
   private clockEl!: HTMLElement;
   private eqEl!: HTMLElement;
   private wakeStrip!: HTMLElement;
+  private noticeEl!: HTMLElement;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
@@ -183,6 +184,7 @@ export class Island {
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
+    this.noticeEl = h("div", { id: "notch-notice" });
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
@@ -226,6 +228,7 @@ export class Island {
       this.countdown,
       this.eqEl,
       this.clockEl,
+      this.noticeEl,
     );
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -912,6 +915,16 @@ export class Island {
 
     syncMiniBotStates(State.tasks);
     this.engine.setState(State.effectiveState);
+
+    // A system event takes the bar for a moment. The clock, the media bars and
+    // the mini bots step aside instead of crowding the line.
+    const showNotice = State.mode === "compact" && State.notice != null;
+    if (showNotice) {
+      const title = State.notice!.title;
+      if (this.noticeEl.textContent !== title) this.noticeEl.textContent = title;
+    }
+    this.noticeEl.classList.toggle("on", showNotice);
+    this.islandEl.classList.toggle("notice", showNotice);
   }
 
   /** Applies settings coming from Rust at boot or from the settings window. */

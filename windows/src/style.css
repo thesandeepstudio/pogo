@@ -232,6 +232,40 @@ body {
   animation-delay: 0.26s;
 }
 
+/* One system event in the compact bar (lock keys, screenshot, download, battery). */
+#notch-notice {
+  position: absolute;
+  left: 58px;
+  right: 14px;
+  top: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 500 11.5px var(--font);
+  color: #e8eaed;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+  pointer-events: none;
+}
+
+#notch-notice.on {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* While a notice is up it owns the bar. */
+#island.notice #notch-clock,
+#island.notice #notch-eq,
+#island.notice #mini-grid {
+  opacity: 0 !important;
+}
+
 @keyframes eq-bounce {
   0%,
   100% {

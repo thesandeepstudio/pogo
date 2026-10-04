@@ -1,6 +1,7 @@
 // Coucou for Windows — app wiring and the commands the island calls.
 
 mod claude;
+mod events;
 mod files;
 mod gpu;
 mod hooks;
@@ -454,6 +455,7 @@ pub fn run() {
             hooks::ensure_hook_exe(&handle);
             pipe::start(handle.clone());
             integrations::start(handle.clone());
+            events::start(handle.clone());
             Ok(())
         })
         .run(tauri::generate_context!())
