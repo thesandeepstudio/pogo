@@ -242,6 +242,7 @@ export class Island {
 
   private wireFsm() {
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.petitToHiddenDelay = State.settings.absenceInterval;
     this.fsm.onTransition = (from, to) => {
       switch (to) {
         case "hidden":
@@ -918,6 +919,7 @@ export class Island {
     Sound.setEnabled(State.settings.soundEnabled);
     Sound.setVolume(State.settings.soundVolume);
     this.fsm.homeToPetitDelay = State.settings.autoCloseInterval;
+    this.fsm.petitToHiddenDelay = State.settings.absenceInterval;
     applyNotchOpacity();
     State.notify();
   }

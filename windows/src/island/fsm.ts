@@ -23,6 +23,9 @@ export class IslandStateMachine {
   private homeCollapse: number | null = null;
   private greetCollapse: number | null = null;
 
+  /** Cursor is over the island — a hide timer must not run under the pointer. */
+  private mouseInside = false;
+
   // ── Inputs ──────────────────────────────────────────────────────────────────
 
   launch() {
@@ -31,6 +34,7 @@ export class IslandStateMachine {
   }
 
   mouseEntered() {
+    this.mouseInside = true;
     switch (this.state) {
       case "hidden":
         this.cancelTimers();
@@ -49,6 +53,7 @@ export class IslandStateMachine {
   }
 
   mouseLeft() {
+    this.mouseInside = false;
     switch (this.state) {
       case "hidden":
         break;
@@ -82,7 +87,6 @@ export class IslandStateMachine {
     if (this.state !== "hidden") return;
     this.cancelTimers();
     this.transition("petit");
-    this.schedulePetitHide();
   }
 
   /** Alert or explicit request: open straight to expanded. */
@@ -106,8 +110,13 @@ export class IslandStateMachine {
 
   private schedulePetitHide() {
     this.clear("petitHide");
-    // The notch stays on screen: it only goes away when the app does. The
-    // auto-close setting still collapses the opened card back down to it.
+    // The notch slides away once it has been left alone. A negative delay keeps it
+    // on screen forever, and the timer must never run while the cursor is on it.
+    if (this.mouseInside || this.petitToHiddenDelay < 0) return;
+    this.petitHide = window.setTimeout(() => {
+      this.petitHide = null;
+      if (this.state === "petit") this.transition("hidden");
+    }, this.petitToHiddenDelay * 1000);
   }
 
   private scheduleHomeCollapse() {
@@ -144,6 +153,10 @@ export class IslandStateMachine {
     if (next === this.state) return;
     const from = this.state;
     this.state = next;
+    // Reaching the bar from the opened island or from the greeting always happens
+    // with the cursor outside, so the auto-hide countdown has to be armed here as
+    // well — otherwise the bar that auto-close leaves behind would sit forever.
+    if (next === "petit") this.schedulePetitHide();
     this.onTransition?.(from, next);
   }
 }

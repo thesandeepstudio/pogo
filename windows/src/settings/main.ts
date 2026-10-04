@@ -125,6 +125,20 @@ function generalSection(): HTMLElement {
     void save();
   });
 
+  const absence = h("select", {}) as HTMLSelectElement;
+  absence.append(
+    h("option", { value: "0", text: "Instant" }),
+    h("option", { value: "30", text: "30s" }),
+    h("option", { value: "60", text: "1m" }),
+    h("option", { value: "180", text: "3m" }),
+    h("option", { value: "300", text: "5m" }),
+  );
+  absence.value = String(settings.absenceInterval);
+  absence.addEventListener("change", () => {
+    settings.absenceInterval = Number(absence.value);
+    void save();
+  });
+
   const notchOpacity = h("input", {
     type: "range", min: "0.2", max: "1", step: "0.05",
     value: String(settings.notchOpacity),
@@ -158,6 +172,11 @@ function generalSection(): HTMLElement {
       h("label", { text: "Auto-close" }),
       autoClose,
       h("span", { class: "hint", text: "How long the island lingers after work finishes" }),
+    ),
+    h("div", { class: "row" },
+      h("label", { text: "Auto-hide" }),
+      absence,
+      h("span", { class: "hint", text: "Slides away once you leave it alone — hover the top edge to bring it back" }),
     ),
     h("div", { class: "row" },
       h("label", { text: "Notch opacity" }),
