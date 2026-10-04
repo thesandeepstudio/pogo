@@ -28,6 +28,23 @@ let running = false;
 
 function push(notice: SystemNotice) {
   if (State.paused) return;
+
+  // Dragging the volume slider produces an event every poll. The notice already
+  // on screen becomes the new value instead, and any queued volume notices are
+  // dropped, so the bar never shows a stale level or a backlog.
+  if (notice.kind === "volume") {
+    for (let i = queue.length - 1; i >= 0; i--) {
+      if (queue[i].kind === "volume") queue.splice(i, 1);
+    }
+    if (current?.kind === "volume") {
+      current = notice;
+      currentUntil = performance.now() + NOTICE_MS;
+      State.notice = notice;
+      State.notify();
+      return;
+    }
+  }
+
   if (queue.length >= MAX_QUEUE) queue.shift();
   queue.push(notice);
   if (!running) {

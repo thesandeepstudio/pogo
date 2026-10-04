@@ -259,6 +259,36 @@ body {
   transform: translateY(0);
 }
 
+/* The volume notices carry a little level bar; the others leave it out. */
+#notch-notice-level {
+  display: none;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 3px;
+  margin-right: 9px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+#notch-notice-level.on {
+  display: block;
+}
+
+#notch-notice-level i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #e8eaed;
+  transform: scaleX(var(--level, 0));
+  transform-origin: left center;
+  transition: transform 0.18s ease-out;
+}
+
+#notch-notice-level.muted i {
+  background: #7f848d;
+}
+
 /* While a notice is up it owns the bar. */
 #island.notice #notch-clock,
 #island.notice #notch-eq,

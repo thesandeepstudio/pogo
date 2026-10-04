@@ -15,6 +15,7 @@ mod secrets;
 mod settings;
 mod system;
 mod tray;
+mod volume;
 
 use std::process::Command;
 use std::sync::atomic::Ordering;

@@ -45,10 +45,13 @@ export interface ResultItem {
   url?: string;
 }
 
-/** A one-line system event shown in the bar: lock keys, screenshot, download, battery. */
+/** A one-line system event shown in the bar: lock keys, screenshot, download, volume. */
 export interface SystemNotice {
   kind: string;
   title: string;
+  /** 0–1, only on the volume notices so the bar can draw the level. */
+  level?: number;
+  muted?: boolean;
 }
 
 export interface SearchResult {

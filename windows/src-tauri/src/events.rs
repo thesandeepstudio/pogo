@@ -20,11 +20,23 @@ use tauri::{AppHandle, Emitter};
 use crate::island::WINDOW_LABEL;
 
 /// A one-line event for the notch bar. `kind` picks the tone, `title` is read.
+/// The volume notices carry the level so the bar can draw it rather than only say it.
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemEvent {
     pub kind: String,
     pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub muted: Option<bool>,
+}
+
+impl SystemEvent {
+    /// Most events are a sentence and nothing else.
+    fn plain(kind: &str, title: impl Into<String>) -> Self {
+        Self { kind: kind.into(), title: title.into(), level: None, muted: None }
+    }
 }
 
 /// Caps Lock is VK_CAPITAL, Num Lock is VK_NUMLOCK.
@@ -40,6 +52,14 @@ const LOCK_POLL_MS: u64 = 120;
 /// Directory listings four times a second is a lot of stat() calls for something
 /// this rare, and 1.5 s still feels instant next to a human.
 const FOLDER_POLL_MS: u64 = 1500;
+
+/// The volume slider has to keep up with a hand dragging it, which is a much
+/// tighter budget than a folder listing.
+const VOLUME_POLL_MS: u64 = 250;
+
+/// Below this the level counts as still: the scalar comes back as a float, and
+/// rounding noise must not read as somebody turning the volume down.
+const VOLUME_EPSILON: f32 = 0.005;
 
 /// How often queued events are handed to the island.
 const EMIT_POLL_MS: u64 = 200;
@@ -212,10 +232,11 @@ pub fn start(app: AppHandle) {
     let shots = screenshots_dir();
     let downloads = downloads_dir();
     crate::log::line(format!(
-        "watching events — screenshots: {}, downloads: {}, lock keys: {}",
+        "watching events — screenshots: {}, downloads: {}, lock keys: {}, volume: {}",
         shots.as_ref().map(|d| d.display().to_string()).unwrap_or_else(|| "none".into()),
         downloads.as_ref().map(|d| d.display().to_string()).unwrap_or_else(|| "none".into()),
         if lock_keys().is_some() { "yes" } else { "no" },
+        if crate::volume::Endpoint::open().is_some() { "yes" } else { "no" },
     ));
 
     // Lock keys get their own thread: they need a tighter period than a directory
@@ -228,16 +249,16 @@ pub fn start(app: AppHandle) {
                     None => last = Some((caps, num)),
                     Some((caps0, num0)) => {
                         if caps != caps0 {
-                            queue(SystemEvent {
-                                kind: "capsLock".into(),
-                                title: if caps { "Caps Lock on".into() } else { "Caps Lock off".into() },
-                            });
+                            queue(SystemEvent::plain(
+                                "capsLock",
+                                if caps { "Caps Lock on" } else { "Caps Lock off" },
+                            ));
                         }
                         if num != num0 {
-                            queue(SystemEvent {
-                                kind: "numLock".into(),
-                                title: if num { "Num Lock on".into() } else { "Num Lock off".into() },
-                            });
+                            queue(SystemEvent::plain(
+                                "numLock",
+                                if num { "Num Lock on" } else { "Num Lock off" },
+                            ));
                         }
                         last = Some((caps, num));
                     }
@@ -265,21 +286,58 @@ pub fn start(app: AppHandle) {
             if let Some(w) = shots.as_mut() {
                 let fresh = w.poll();
                 if !fresh.is_empty() {
-                    queue(SystemEvent {
-                        kind: "screenshot".into(),
-                        title: "Screenshot taken".into(),
-                    });
+                    queue(SystemEvent::plain("screenshot", "Screenshot taken"));
                 }
             }
             if let Some(w) = downloads.as_mut() {
                 let fresh = w.poll();
                 if !fresh.is_empty() {
-                    queue(SystemEvent {
-                        kind: "download".into(),
-                        title: format!("Downloaded {}", Watcher::describe(fresh)),
-                    });
+                    queue(SystemEvent::plain("download", format!("Downloaded {}", Watcher::describe(fresh))));
                 }
             }
+        }
+    });
+
+    // The volume gets its own thread because it is the only watcher with to keep
+    // up with a hand rather than wait for a person to notice.
+    std::thread::spawn(|| {
+        let mut endpoint = crate::volume::Endpoint::open();
+        let mut last: Option<crate::volume::Volume> = None;
+        loop {
+            std::thread::sleep(Duration::from_millis(VOLUME_POLL_MS));
+
+            // An endpoint can vanish mid-session — a USB headset being unplugged
+            // takes the default device with it — so a failed read reopens rather
+            // than ending the thread.
+            if endpoint.is_none() {
+                endpoint = crate::volume::Endpoint::open();
+            }
+            let Some(now) = endpoint.as_ref().and_then(|e| e.read()) else {
+                continue;
+            };
+
+            let Some(before) = last else {
+                last = Some(now);
+                continue;
+            };
+            last = Some(now);
+
+            let moved = (now.level - before.level).abs() > VOLUME_EPSILON;
+            if !moved && now.muted == before.muted {
+                continue;
+            }
+
+            let title = if now.muted != before.muted && !moved {
+                if now.muted { "Muted".to_string() } else { "Unmuted".to_string() }
+            } else {
+                format!("Volume {}%", (now.level * 100.0).round() as i32)
+            };
+            queue(SystemEvent {
+                kind: "volume".into(),
+                title,
+                level: Some(now.level),
+                muted: Some(now.muted),
+            });
         }
     });
 

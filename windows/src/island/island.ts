@@ -56,6 +56,8 @@ export class Island {
   private eqEl!: HTMLElement;
   private wakeStrip!: HTMLElement;
   private noticeEl!: HTMLElement;
+  private noticeTextEl!: HTMLElement;
+  private noticeLevelEl!: HTMLElement;
 
   private header!: ViewHost;
   private views!: Map<IslandViewName, ViewHost>;
@@ -184,7 +186,9 @@ export class Island {
     };
 
     this.wakeStrip = h("div", { id: "wake-strip" });
-    this.noticeEl = h("div", { id: "notch-notice" });
+    this.noticeTextEl = h("span", { id: "notch-notice-text" });
+    this.noticeLevelEl = h("div", { id: "notch-notice-level" }, h("i"));
+    this.noticeEl = h("div", { id: "notch-notice" }, this.noticeLevelEl, this.noticeTextEl);
     this.botGlow = h("div", { id: "bot-glow" });
     this.botCanvas = h("canvas", { id: "bot-canvas" });
     this.greetingCanvas = h("canvas", { id: "greeting-canvas" });
@@ -920,8 +924,17 @@ export class Island {
     // the mini bots step aside instead of crowding the line.
     const showNotice = State.mode === "compact" && State.notice != null;
     if (showNotice) {
-      const title = State.notice!.title;
-      if (this.noticeEl.textContent !== title) this.noticeEl.textContent = title;
+      const notice = State.notice!;
+      if (this.noticeTextEl.textContent !== notice.title) {
+        this.noticeTextEl.textContent = notice.title;
+      }
+      // Only the volume notices carry a level; everything else has no bar at all.
+      const level = notice.level;
+      this.noticeLevelEl.classList.toggle("on", level != null);
+      if (level != null) {
+        this.noticeLevelEl.style.setProperty("--level", String(level));
+      }
+      this.noticeLevelEl.classList.toggle("muted", notice.muted === true);
     }
     this.noticeEl.classList.toggle("on", showNotice);
     this.islandEl.classList.toggle("notice", showNotice);
